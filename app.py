@@ -249,11 +249,11 @@ def build_dashboard():
     ]).groupby(level=0).sum().idxmax()
 
     metrics = [
-        {"label": "Matches Played", "value": total_matches, "sub": "Group Stage"},
+        {"label": "Matches Played", "value": total_matches},
         {"label": "Total Goals", "value": total_goals, "sub": f"{total_goals / total_matches:.1f} per game"},
         {"label": "Most Teams", "value": top_brand, "sub": f"{top_brand_count} nations"},
         {"label": "Most Wins", "value": most_wins_brand, "sub": "Leading brand"},
-        {"label": "Brands", "value": len(ALL_BRANDS), "sub": "Kit suppliers"},
+        {"label": "Brands", "value": len(ALL_BRANDS)},
     ]
 
     # ---- Awards / hero section ----
