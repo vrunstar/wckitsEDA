@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Kit manufacturer performance analysis for the 2026 World Cup group stage.">
+<title>2026 World Cup — Kit Manufacturer Analysis</title>
+<link rel="preconnect" href="https://cdn.plot.ly">
+<link rel="stylesheet" href="../static\css\style.css">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" defer></script>
+</head>
+<body>
+
+<!--
+  Expected context (see build_dashboard() in app.py):
+    metrics           [{label, value, sub}, ...]                 -- 5 items, feeds the stat tape
+    champions         {name, image_url, logo_url}
+    awards            [{label, image_url, logo_url}, ...]
+    story_chapters    [{tag, logo_url, color, text}, ...]
+    story_outro       str
+    total_matches, total_goals, total_brands
+    chart_sections    [{id, title, charts: [chart_key, ...], insight}, ...]
+    charts            {chart_key: <fig_json string>, ...}
+-->
+
+<nav class="topnav">
+    <div class="topnav-links" id="nav">
+        <a href="#overview">Overview</a>
+        <a href="#story">Story</a>
+        {% for section in chart_sections %}
+        <a href="#{{ section.id }}">{{ section.title }}</a>
+        {% endfor %}
+    </div>
+</nav>
+
+<div class="content">
+
+    <section id="overview" class="page-section">
+        <div class="masthead">
+            <div class="masthead-heading">Who's <em>winning</em><br>off the pitch</div>
+            <div class="masthead-sub">Kit manufacturer performance</div>
+        </div>
+
+        <div class="bento">
+            <div class="bento-champions"
+                 style="{% if champions.image_url %}background-image: url('{{ champions.image_url }}');{% endif %}">
+                <span class="tag">World Champions</span>
+                <div class="bento-champions-inner">
+                    <span class="name">{{ champions.name }}</span>
+                    {% if champions.logo_url %}<img class="brand-logo" src="{{ champions.logo_url }}" alt="Kit brand logo">{% endif %}
+                </div>
+            </div>
+            {% for award in awards %}
+            <article class="bento-award"
+                      style="{% if award.image_url %}background-image: url('{{ award.image_url }}');{% endif %}">
+                <span class="label">{{ award.label }}</span>
+                {% if award.logo_url %}<img class="brand-logo" src="{{ award.logo_url }}" alt="{{ award.label }} kit brand">{% endif %}
+            </article>
+            {% endfor %}
+        </div>
+
+        <div class="stat-tape">
+            {% for m in metrics %}
+            <div class="stat-tape-item">
+                <div class="stat-tape-value">{{ m.value }}</div>
+                <div class="stat-tape-label">{{ m.label }}{% if m.sub %} · {{ m.sub }}{% endif %}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section id="story" class="page-section">
+        <div class="section-head"><span class="section-index">01</span><h2 class="section-title">The Story of the Tournament</h2></div>
+        <div class="timeline">
+            <p class="timeline-intro">
+                Across <b>{{ total_matches }} group-stage matches</b> and <b>{{ total_goals }} goals</b>,
+                {{ total_brands }} kit manufacturers are battling for supremacy off the pitch as much as their teams are on it.
+            </p>
+            {% for ch in story_chapters %}
+            <div class="timeline-item" style="--dot: {{ ch.color }};">
+                <span class="timeline-tag">{{ ch.tag }}</span>
+                <p class="timeline-text">{{ ch.text | safe }}</p>
+            </div>
+            {% endfor %}
+            <p class="timeline-outro">{{ story_outro }}</p>
+        </div>
+    </section>
+
+    {% for section in chart_sections %}
+    <section id="{{ section.id }}" class="page-section">
+        <div class="section-head">
+            <span class="section-index">{{ '%02d'|format(loop.index + 1) }}</span>
+            <h2 class="section-title">{{ section.title }}</h2>
+        </div>
+        <div class="section-charts count-{{ section.charts|length }}">
+            {% for key in section.charts %}
+            <div class="chart-panel">
+                <div id="chart-{{ key }}" class="chart-box" role="img" aria-label="{{ key|replace('_',' ')|title }} chart">
+                    <div class="chart-loading" aria-hidden="true">Loading…</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="section-insight">
+            <div class="k">Reading this</div>
+            <p>{{ section.insight | safe }}</p>
+        </div>
+    </section>
+    {% endfor %}
+
+</div>
+
+<script>
+(function () {
+    "use strict";
+
+    var chartData = {
+        {% for key, payload in charts.items() %}
+        "{{ key }}": {{ payload | safe }}{{ "," if not loop.last }}
+        {% endfor %}
+    };
+
+    var plotConfig = { responsive: true, displaylogo: false };
+
+    function renderAll() {
+        Object.keys(chartData).forEach(function (key) {
+            var el = document.getElementById("chart-" + key);
+            var fig = chartData[key];
+            if (el && fig) {
+                el.innerHTML = ""; // clear the "Loading…" placeholder
+                Plotly.newPlot(el, fig.data, fig.layout, plotConfig);
+            }
+        });
+    }
+
+    var resizeTimer;
+    function onResize() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+            Object.keys(chartData).forEach(function (key) {
+                var el = document.getElementById("chart-" + key);
+                if (el) Plotly.Plots.resize(el);
+            });
+        }, 150);
+    }
+
+    document.addEventListener("DOMContentLoaded", renderAll);
+    window.addEventListener("resize", onResize);
+
+    // scrollspy against the top navbar
+    var sections = Array.prototype.slice.call(document.querySelectorAll(".page-section[id]"));
+    var links = Array.prototype.slice.call(document.querySelectorAll("#nav a"));
+    var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+                links.forEach(function (l) { l.classList.remove("active"); });
+                var link = document.querySelector('#nav a[href="#' + entry.target.id + '"]');
+                if (link) link.classList.add("active");
+            }
+        });
+    }, { rootMargin: "-30% 0px -60% 0px" });
+    sections.forEach(function (s) { io.observe(s); });
+})();
+</script>
+</body>
+</html>
